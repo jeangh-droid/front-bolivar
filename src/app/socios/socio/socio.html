@@ -56,15 +56,12 @@
   </div>
 </div>
 
-
-<!-- ===== modal agregar ===== -->
-
+<!-- MODAL AGREGAR/EDITAR -->
 <div class="modal fade" #socioModal id="socioModal" tabindex="-1" aria-labelledby="socioModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title" id="socioModalLabel">{{ modalTitle }}</h5>
-        
         <button type="button" class="btn-close" (click)="closeSocioModal()" aria-label="Close"></button>
       </div>
       <div class="modal-body">
@@ -75,6 +72,74 @@
         
         <form #socioForm="ngForm" (ngSubmit)="saveSocio()">
           
+          <h5 class="text-primary">Datos de Usuario</h5>
+          <hr class="mt-0">
+          
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label for="nombre" class="form-label">Nombre (*)</label>
+              <input type="text" class="form-control" id="nombre" 
+                     [(ngModel)]="currentSocio.nombre" name="nombre" required #nombre="ngModel">
+            </div>
+            <div class="col-md-6 mb-3">
+              <label for="apellido" class="form-label">Apellido (*)</label>
+              <input type="text" class="form-control" id="apellido" 
+                     [(ngModel)]="currentSocio.apellido" name="apellido" required #apellido="ngModel">
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="col-md-4 mb-3">
+              <label for="username" class="form-label">Username (*)</label>
+              <input type="text" class="form-control" id="username" 
+                     [(ngModel)]="currentSocio.username" name="username" required #username="ngModel">
+            </div>
+            <div class="col-md-4 mb-3">
+              <label for="dni" class="form-label">DNI (*)</label>
+              <input type="text" class="form-control" id="dni" 
+                     [(ngModel)]="currentSocio.dni" name="dni" required #dni="ngModel">
+            </div>
+            <div class="col-md-4 mb-3">
+              <label for="numero" class="form-label">Número (Teléfono) (*)</label>
+              <input type="text" class="form-control" id="numero" 
+                     [(ngModel)]="currentSocio.numero" name="numero" required #numero="ngModel">
+            </div>
+          </div>
+          <div class="row">
+            <div class="col-md-4 mb-3">
+                <label for="password" class="form-label">Contraseña (*)</label>
+                <input type="password" class="form-control" id="password" 
+                       [(ngModel)]="currentSocio.password" name="password" 
+                       [required]="currentSocioId === null" #password="ngModel">
+                <div *ngIf="currentSocioId !== null" class="form-text">Dejar en blanco para no cambiar.</div>
+            </div>
+          </div>
+          
+          <h5 class="text-primary mt-3">Datos de Socio</h5>
+          <hr class="mt-0">
+
+          <div class="mb-3">
+            <label for="direccion" class="form-label">Dirección (*)</label>
+            <input type="text" class="form-control" id="direccion" 
+                   [(ngModel)]="currentSocio.direccion" name="direccion" required #direccion="ngModel">
+          </div>
+          
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label for="tarjetaSocio" class="form-label">N° Tarjeta de Socio (*)</label>
+              <input type="text" class="form-control" id="tarjetaSocio" 
+                     [(ngModel)]="currentSocio.tarjetaSocio" name="tarjetaSocio" required #tarjeta="ngModel">
+            </div>
+            <div class="col-md-6 mb-3">
+              <label for="carnetSanidad" class="form-label">Carnet de Sanidad (*)</label>
+              <select class="form-select" id="carnetSanidad" 
+                      [(ngModel)]="currentSocio.carnetSanidad" name="carnetSanidad" required>
+                <option value="VIGENTE">VIGENTE</option>
+                <option value="VENCIDO">VENCIDO</option>
+              </select>
+            </div>
+          </div>
+        
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary" (click)="closeSocioModal()">Cancelar</button>
             <button type="submit" class="btn btn-primary" [disabled]="socioForm.invalid">Guardar Cambios</button>
@@ -91,7 +156,6 @@
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title" id="deleteModalLabel">Confirmar Eliminación</h5>
-      
         <button type="button" class="btn-close" (click)="closeDeleteModal()" aria-label="Close"></button>
       </div>
       <div class="modal-body">
@@ -101,7 +165,6 @@
         </p>
       </div>
       <div class="modal-footer">
-        
         <button type="button" class="btn btn-secondary" (click)="closeDeleteModal()">Cancelar</button>
         <button type="button" class="btn btn-danger" (click)="confirmDelete()">
           Eliminar
