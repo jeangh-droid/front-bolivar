@@ -1,0 +1,112 @@
+<!-- Tarjeta principal -->
+<div class="card shadow-sm">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <h2 class="h4 mb-0">Gestión de Socios</h2>
+    <button class="btn btn-primary" (click)="openModal()">
+      <i class="bi bi-plus-lg me-2"></i>
+      Agregar Socio
+    </button>
+  </div>
+
+  <div class="card-body">
+    <!-- Tabla de Socios -->
+    <div class="table-responsive">
+      <table class="table table-striped table-hover align-middle">
+        <thead class="table-dark">
+          <tr>
+            <th>ID</th>
+            <th>Nombre</th>
+            <th>Apellido</th>
+            <th>DNI</th>
+            <th>Dirección</th>
+            <th>Carnet</th>
+            <th>Tarjeta</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let socio of socios">
+            <td>{{ socio.id }}</td> 
+            <td>{{ socio.nombre }}</td>
+            <td>{{ socio.apellido }}</td>
+            <td>{{ socio.dni }}</td>
+            <td>{{ socio.direccion }}</td>
+            <td>
+              <span class="badge" [class.bg-success]="socio.carnetSanidad === 'VIGENTE'" [class.bg-danger]="socio.carnetSanidad !== 'VIGENTE'">
+                {{ socio.carnetSanidad }}
+              </span>
+            </td>
+            <td>{{ socio.tarjetaSocio }}</td>
+            <td>
+              <button class="btn btn-sm btn-warning me-2" (click)="openModal(socio)">
+                <i class="bi bi-pencil-fill me-1"></i> Editar
+              </button>
+              <button class="btn btn-sm btn-danger" (click)="openDeleteModal(socio)" 
+                      data-bs-toggle="modal" data-bs-target="#deleteConfirmModal">
+                <i class="bi bi-trash-fill me-1"></i> Eliminar
+              </button>
+            </td>
+          </tr>
+          <tr *ngIf="socios.length === 0">
+            <td colspan="8" class="text-center text-muted">No hay socios registrados.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+
+<!-- ===== modal agregar ===== -->
+
+<div class="modal fade" #socioModal id="socioModal" tabindex="-1" aria-labelledby="socioModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="socioModalLabel">{{ modalTitle }}</h5>
+        
+        <button type="button" class="btn-close" (click)="closeSocioModal()" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        
+        <div *ngIf="errorMessage" class="alert alert-danger">
+          {{ errorMessage }}
+        </div>
+        
+        <form #socioForm="ngForm" (ngSubmit)="saveSocio()">
+          
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" (click)="closeSocioModal()">Cancelar</button>
+            <button type="submit" class="btn btn-primary" [disabled]="socioForm.invalid">Guardar Cambios</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal de Borrado -->
+<div class="modal fade" #deleteConfirmModal id="deleteConfirmModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="deleteModalLabel">Confirmar Eliminación</h5>
+      
+        <button type="button" class="btn-close" (click)="closeDeleteModal()" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p *ngIf="socioAEliminar">
+          ¿Estás seguro de que deseas eliminar al socio 
+          <strong>{{ socioAEliminar.nombre }} {{ socioAEliminar.apellido }}</strong> (ID: {{ socioAEliminar.id }})? <!-- ¡CORREGIDO! -->
+        </p>
+      </div>
+      <div class="modal-footer">
+        
+        <button type="button" class="btn btn-secondary" (click)="closeDeleteModal()">Cancelar</button>
+        <button type="button" class="btn btn-danger" (click)="confirmDelete()">
+          Eliminar
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

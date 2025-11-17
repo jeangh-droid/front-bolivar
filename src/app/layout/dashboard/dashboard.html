@@ -1,0 +1,81 @@
+<ng-container *ngIf="currentUserRole$ | async as role">
+  
+  <div class="d-flex vh-100">
+
+    <div class="d-flex flex-column flex-shrink-0 p-3 text-white bg-dark" style="width: 280px;">
+      <a routerLink="/dashboard" class="d-flex align-items-center mb-3 mb-md-0 me-md-auto text-white text-decoration-none">
+        <span class="fs-4">Mi Aplicación</span>
+      </a>
+      <hr>
+      <ul class="nav nav-pills flex-column mb-auto">
+        
+        <li class="nav-item">
+          <a routerLink="/dashboard" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}" class="nav-link text-white">
+            <i class="bi bi-house-door-fill me-2"></i>
+            Inicio
+          </a>
+        </li>
+
+        <ng-container [ngSwitch]="role">
+          
+          <ng-container *ngSwitchCase="'ROLE_ADMIN'">
+            <li class="nav-item">
+              <a routerLink="socios" routerLinkActive="active" class="nav-link text-white">
+                <i class="bi bi-people-fill me-2"></i> Socios
+              </a>
+            </li>
+            <li>
+
+              <a href="#" class="nav-link text-white text-opacity-50">
+                <i class="bi bi-shop me-2"></i> Puestos
+              </a>
+            </li>
+            <li>
+              <a href="#" class="nav-link text-white text-opacity-50">
+                <i class="bi bi-cash-stack me-2"></i> Pagos (Admin)
+              </a>
+            </li>
+          </ng-container>
+
+          <ng-container *ngSwitchCase="'ROLE_SOCIO'">
+            <!-- ... enlaces de socio (deshabilitados por ahora) ... -->
+            <li>
+              <a href="#" class="nav-link text-white text-opacity-50">
+                <i class="bi bi-credit-card-fill me-2"></i> Mis Pagos
+              </a>
+            </li>
+            <li>
+              <a href="#" class="nav-link text-white text-opacity-50">
+                <i class="bi bi-exclamation-triangle-fill me-2"></i> Mis Multas
+              </a>
+            </li>
+          </ng-container>
+
+        </ng-container>
+      </ul>
+      <hr>
+    </div>
+
+    <div class="d-flex flex-column flex-grow-1">
+      
+      <nav class="navbar navbar-light bg-white shadow-sm">
+        <div class="container-fluid">
+          <span class="navbar-text fs-5">
+            Hola, {{ (currentUserName$ | async) || 'Usuario' }}
+          </span>
+          <button (click)="logout()" class="btn btn-outline-danger">
+            Cerrar Sesión
+          </button>
+        </div>
+      </nav>
+
+      <main class="container-fluid p-4 overflow-auto" style="flex-grow: 1;">
+        
+        <router-outlet></router-outlet>
+
+      </main>
+
+    </div> 
+  </div> 
+
+</ng-container>
