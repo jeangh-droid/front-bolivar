@@ -4,6 +4,7 @@ import { Dashboard } from './layout/dashboard/dashboard';
 import { AuthGuard } from './guards/auth-guard';
 import { DashboardHomeComponent } from './layout/dashboard/dashboard-home/dashboard-home';
 import { SocioComponent } from './socios/socio/socio';
+import { PuestoComponent } from './puestos/puesto/puesto';
 
 export const routes: Routes = [
   { path: 'login', component: LoginComponent },
@@ -19,9 +20,9 @@ export const routes: Routes = [
       
       // Ruta hija para el módulo Socios
       { path: 'socios', component: SocioComponent },
-
+      { path: 'puestos', component: PuestoComponent },
       // Aquí añadirás las otras rutas en el futuro
-      // { path: 'puestos', component: PuestosComponent },
+       
       // { path: 'pagos', component: PagosComponent },
     ]
   },

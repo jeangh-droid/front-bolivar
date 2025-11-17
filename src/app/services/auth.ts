@@ -1,9 +1,9 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, BehaviorSubject, tap, map } from 'rxjs'; // ¡NUEVO! BehaviorSubject y operadores
-import { Router } from '@angular/router'; // ¡NUEVO!
-import { TokenService } from './token'; // ¡NUEVO!
-import { jwtDecode } from 'jwt-decode'; // ¡NUEVO!
+import { Observable, BehaviorSubject, tap, map } from 'rxjs'; 
+import { Router } from '@angular/router'; 
+import { TokenService } from './token'; 
+import { jwtDecode } from 'jwt-decode'; 
 
 // --- Interfaces ---
 interface LoginRequest {
