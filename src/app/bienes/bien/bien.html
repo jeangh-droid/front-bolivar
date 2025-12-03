@@ -1,0 +1,118 @@
+<div class="card shadow-sm">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <h2 class="h4 mb-0">Inventario de Bienes</h2>
+    <button class="btn btn-primary" (click)="openModal()">
+      <i class="bi bi-plus-lg me-2"></i> Agregar Bien
+    </button>
+  </div>
+  <div class="card-body">
+    <div class="table-responsive">
+      <table class="table table-striped table-hover align-middle">
+        <thead class="table-dark">
+          <tr>
+            <th>ID</th>
+            <th>Nombre</th>
+            <th>Descripción</th>
+            <th>Cantidad</th>
+            <th>Estado</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let bien of bienes">
+            <td>{{ bien.id }}</td>
+            <td>{{ bien.nombre }}</td>
+            <td>{{ bien.descripcion }}</td>
+            <td>{{ bien.cantidad }}</td>
+            <td>
+              <span class="badge" 
+                [class.bg-success]="bien.estado === 'BUENO'" 
+                [class.bg-warning]="bien.estado === 'REGULAR'"
+                [class.bg-danger]="bien.estado === 'MALO'">
+                {{ bien.estado }}
+              </span>
+            </td>
+            <td>
+              <button class="btn btn-sm btn-warning me-2" (click)="openModal(bien)">
+                <i class="bi bi-pencil-fill"></i> Editar
+              </button>
+              <button class="btn btn-sm btn-danger" (click)="openDeleteModal(bien)">
+                <i class="bi bi-trash-fill"></i> Eliminar
+              </button>
+            </td>
+          </tr>
+          <tr *ngIf="bienes.length === 0">
+            <td colspan="6" class="text-center text-muted">No hay bienes registrados.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Agregar/Editar -->
+<div class="modal fade" #bienModal id="bienModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">{{ modalTitle }}</h5>
+        <button type="button" class="btn-close" (click)="closeBienModal()"></button>
+      </div>
+      <div class="modal-body">
+        
+        <div *ngIf="errorMessage" class="alert alert-danger">{{ errorMessage }}</div>
+        
+        <form #bienForm="ngForm" (ngSubmit)="saveBien()">
+          
+          <div class="mb-3">
+            <label class="form-label">Nombre (*)</label>
+            <input type="text" class="form-control" [(ngModel)]="currentBien.nombre" name="nombre" required>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Descripción</label>
+            <textarea class="form-control" [(ngModel)]="currentBien.descripcion" name="descripcion" rows="2"></textarea>
+          </div>
+
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Cantidad (*)</label>
+              <input type="number" class="form-control" [(ngModel)]="currentBien.cantidad" name="cantidad" required min="0">
+            </div>
+            
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Estado (*)</label>
+              <select class="form-select" [(ngModel)]="currentBien.estado" name="estado" required>
+                <option *ngFor="let e of estados" [value]="e">{{ e }}</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" (click)="closeBienModal()">Cancelar</button>
+            <button type="submit" class="btn btn-primary" [disabled]="bienForm.invalid">Guardar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Borrar -->
+<div class="modal fade" #deleteConfirmModal id="deleteConfirmModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Confirmar Eliminación</h5>
+        <button type="button" class="btn-close" (click)="closeDeleteModal()"></button>
+      </div>
+      <div class="modal-body">
+        <p>¿Eliminar bien <strong>{{ bienAEliminar?.nombre }}</strong>?</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="closeDeleteModal()">Cancelar</button>
+        <button type="button" class="btn btn-danger" (click)="confirmDelete()">Eliminar</button>
+      </div>
+    </div>
+  </div>
+</div>

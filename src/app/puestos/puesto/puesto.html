@@ -1,129 +1,197 @@
-<!-- Tarjeta principal -->
-<div class="card shadow-sm">
-  <div class="card-header d-flex justify-content-between align-items-center">
-    <h2 class="h4 mb-0">Gestión de Puestos</h2>
+<div class="container-fluid">
+  
+  <div *ngIf="successMessage" class="alert alert-success alert-dismissible fade show" role="alert">
+    <i class="bi bi-check-circle-fill me-2"></i> {{ successMessage }}
+    <button type="button" class="btn-close" (click)="successMessage = null"></button>
   </div>
 
-  <div class="card-body">
-    <!-- Tabla de Puestos -->
-    <div class="table-responsive">
-      <table class="table table-striped table-hover align-middle">
-        <thead class="table-dark">
-          <tr>
-            <th>ID</th>
-            <th>Número</th>
-            <th>Ubicación</th>
-            <th>Socio Asignado</th>
-            <th>DNI Socio</th>
-            <th>Licencia</th>
-            <th>Estado</th>
-            <th>Acciones</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr *ngFor="let puesto of puestos">
-            <td>{{ puesto.id }}</td>
-            <td>{{ puesto.numeroPuesto }}</td>
-            <td>{{ puesto.ubicacion }}</td>
-            <td>{{ puesto.socioNombreCompleto || 'Sin Asignar' }}</td>
-            <td>{{ puesto.socioDni || 'N/A' }}</td>
-            <td>
-              <span class="badge" [class.bg-success]="puesto.licenciaFuncionamiento === 'VIGENTE'" [class.bg-danger]="puesto.licenciaFuncionamiento !== 'VIGENTE'">
-                {{ puesto.licenciaFuncionamiento }}
-              </span>
-            </td>
-            <td>
-              <span class="badge" [class.bg-info]="puesto.estado === 'OPERATIVO'" [class.bg-secondary]="puesto.estado !== 'OPERATIVO'">
-                {{ puesto.estado }}
-              </span>
-            </td>
-            <td>
-              <button class="btn btn-sm btn-warning" (click)="openModal(puesto)">
-                <i class="bi bi-pencil-fill me-1"></i> Editar
-              </button>
-            </td>
-          </tr>
-          <tr *ngIf="puestos.length === 0">
-            <td colspan="8" class="text-center text-muted">No hay puestos registrados.</td>
-          </tr>
-        </tbody>
-      </table>
+  <div class="card shadow-sm">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <h2 class="h4 mb-0">Gestión de Puestos Fijos</h2>
+    </div>
+
+    <div class="card-body">
+      <div class="table-responsive">
+        <table class="table table-striped table-hover align-middle">
+          <thead class="table-dark">
+            <tr>
+              <th>Número</th>
+              <th>Ubicación</th>
+              <th>Titular</th>
+              <th>Licencia</th>
+              <th>Estado</th>
+              <th class="text-center">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let puesto of puestos">
+              <td class="fw-bold">{{ puesto.numeroPuesto }}</td>
+              <td>{{ puesto.ubicacion }}</td>
+              <td>
+                <span *ngIf="puesto.socioNombreCompleto" class="text-primary fw-bold">
+                  <i class="bi bi-person-fill"></i> {{ puesto.socioNombreCompleto }}
+                </span>
+                <span *ngIf="!puesto.socioNombreCompleto" class="text-muted fst-italic">-- Vacante --</span>
+              </td>
+              <td>
+                <span class="badge" [class.bg-success]="puesto.licenciaFuncionamiento === 'VIGENTE'" [class.bg-danger]="puesto.licenciaFuncionamiento !== 'VIGENTE'">
+                  {{ puesto.licenciaFuncionamiento }}
+                </span>
+              </td>
+              <td>
+                <span class="badge" [class.bg-info]="puesto.estado === 'OPERATIVO'" [class.bg-secondary]="puesto.estado !== 'OPERATIVO'">
+                  {{ puesto.estado }}
+                </span>
+              </td>
+              <td class="text-center">
+                
+                <button class="btn btn-sm btn-info me-1" (click)="openVerModal(puesto)" title="Ver Detalles">
+                  <i class="bi bi-eye-fill"></i>
+                </button>
+
+                <!-- EDITAR (Datos técnicos solamente) -->
+                <button class="btn btn-sm btn-warning me-1" (click)="openEditModal(puesto)" title="Editar Datos">
+                  <i class="bi bi-pencil-fill"></i>
+                </button>
+
+                <!-- TRANSFERIR (Cambio de socio) -->
+                <button class="btn btn-sm btn-primary" (click)="openTransferModal(puesto)" title="Transferir / Asignar">
+                  <i class="bi bi-arrow-left-right"></i>
+                </button>
+
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </div>
   </div>
 </div>
 
-<!-- ===== MODAL PARA EDITAR PUESTO ===== -->
-<div class="modal fade" #puestoModal id="puestoModal" tabindex="-1" aria-labelledby="puestoModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-lg">
+<!-- ================================================= -->
+<!-- MODAL EDITAR (Socio Bloqueado) -->
+<!-- ================================================= -->
+<div class="modal fade" #editModal id="editModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title" id="puestoModalLabel">{{ modalTitle }}</h5>
-        <button type="button" class="btn-close" (click)="closePuestoModal()" aria-label="Close"></button>
+        <h5 class="modal-title">Editar Puesto: {{ currentPuestoReadonly.numero }}</h5>
+        <button type="button" class="btn-close" (click)="closeEditModal()"></button>
       </div>
       <div class="modal-body">
-        
-        <div *ngIf="errorMessage" class="alert alert-danger">
-          {{ errorMessage }}
-        </div>
-        
-        <form #puestoForm="ngForm" (ngSubmit)="savePuesto()">
+        <form (ngSubmit)="saveEdit()">
           
-          <h5 class="text-primary">Información Fija</h5>
-          <hr class="mt-0">
-
-          <div class="row">
-            <div class="col-md-6 mb-3">
-              <label class="form-label">Número de Puesto</label>
-              <input type="text" class="form-control" [value]="currentPuestoReadonly.numero" disabled>
-            </div>
-            <div class="col-md-6 mb-3">
-              <label class="form-label">Ubicación</label>
-              <input type="text" class="form-control" [value]="currentPuestoReadonly.ubicacion" disabled>
-            </div>
-          </div>
-
-          <h5 class="text-primary mt-3">Campos Editables</h5>
-          <hr class="mt-0">
-          
-          <div class="row">
-            <div class="col-md-12 mb-3">
-              <label for="idSocio" class="form-label">Asignar Socio (*)</label>
-              <select class="form-select" id="idSocio" 
-                      [(ngModel)]="currentPuesto.idSocio" name="idSocio" required>
-                <option [value]="0">-- Sin Asignar --</option>
-                <!-- Itera sobre la lista de socios cargada -->
-                <option *ngFor="let socio of socios" [value]="socio.id">
-                  {{ socio.nombre }} {{ socio.apellido }} (DNI: {{ socio.dni }})
-                </option>
-              </select>
-            </div>
+          <!-- Socio Actual (SOLO LECTURA) -->
+          <div class="mb-3">
+            <label class="form-label text-muted">Titular Actual</label>
+            <input type="text" class="form-control bg-light" [value]="currentPuestoReadonly.socioActual" disabled readonly>
+            <div class="form-text">Para cambiar el titular, use la opción "Transferir".</div>
           </div>
           
           <div class="row">
             <div class="col-md-6 mb-3">
-              <label for="licencia" class="form-label">Licencia de Funcionamiento (*)</label>
-              <select class="form-select" id="licencia" 
-                      [(ngModel)]="currentPuesto.licenciaFuncionamiento" name="licencia" required>
+              <label class="form-label">Licencia</label>
+              <select class="form-select" [(ngModel)]="currentPuesto.licenciaFuncionamiento" name="licencia">
                 <option value="VIGENTE">VIGENTE</option>
                 <option value="VENCIDO">VENCIDO</option>
               </select>
             </div>
             <div class="col-md-6 mb-3">
-              <label for="estado" class="form-label">Estado del Puesto (*)</label>
-              <select class="form-select" id="estado" 
-                      [(ngModel)]="currentPuesto.estado" name="estado" required>
+              <label class="form-label">Estado</label>
+              <select class="form-select" [(ngModel)]="currentPuesto.estado" name="estado">
                 <option value="OPERATIVO">OPERATIVO</option>
-                <option value="INOPERATIVO">INOPERATIVO</option>
-                <!-- Añade más estados si los tienes en tu Enum -->
+                <option value="INACTIVO">INACTIVO</option>
               </select>
             </div>
           </div>
         
           <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" (click)="closePuestoModal()">Cancelar</button>
-            <button type="submit" class="btn btn-primary" [disabled]="puestoForm.invalid">Guardar Cambios</button>
+            <button type="button" class="btn btn-secondary" (click)="closeEditModal()">Cancelar</button>
+            <button type="submit" class="btn btn-primary">Guardar Cambios</button>
           </div>
         </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ================================================= -->
+<!-- MODAL TRANSFERIR (Nuevo Modal) -->
+<!-- ================================================= -->
+<div class="modal fade" #transferModal id="transferModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title"><i class="bi bi-arrow-left-right me-2"></i> Transferir Puesto {{ currentPuestoReadonly.numero }}</h5>
+        <button type="button" class="btn-close btn-close-white" (click)="closeTransferModal()"></button>
+      </div>
+      <div class="modal-body">
+        
+        <div class="alert alert-info border-info">
+          <strong>Ubicación:</strong> {{ currentPuestoReadonly.ubicacion }}<br>
+          <strong>Titular Actual:</strong> {{ currentPuestoReadonly.socioActual }}
+        </div>
+
+        <form (ngSubmit)="saveTransfer()">
+          
+          <div class="mb-3">
+            <label class="form-label fw-bold">Nuevo Titular (Solo Socios Activos)</label>
+            
+            <!-- SELECT DE SOCIOS ACTIVOS -->
+            <select class="form-select border-primary" [(ngModel)]="transferData.idSocioNuevo" name="idSocioNuevo" required>
+              <option [value]="0">-- LIBERAR PUESTO (Dejar Vacante) --</option>
+              
+              <!-- Iteramos sobre sociosActivos -->
+              <option *ngFor="let socio of sociosActivos" [value]="socio.id">
+                {{ socio.nombre }} {{ socio.apellido }} (DNI: {{ socio.dni }})
+              </option>
+            </select>
+            
+            <div class="form-text mt-2" *ngIf="sociosActivos.length === 0">
+              <i class="bi bi-exclamation-circle text-warning"></i> No se encontraron socios activos disponibles o no se cargó la lista.
+            </div>
+          </div>
+        
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" (click)="closeTransferModal()">Cancelar</button>
+            <button type="submit" class="btn btn-primary" [disabled]="!transferData.idSocioNuevo && transferData.idSocioNuevo !== 0">
+              Confirmar Transferencia
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL VER DETALLE (Sin cambios) -->
+<div class="modal fade" #verModal id="verModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-info text-white">
+        <h5 class="modal-title"><i class="bi bi-info-circle-fill me-2"></i> Detalle del Puesto</h5>
+        <button type="button" class="btn-close" (click)="closeVerModal()"></button>
+      </div>
+      <div class="modal-body" *ngIf="detallePuesto">
+        <ul class="list-group list-group-flush">
+          <li class="list-group-item"><strong>Número:</strong> {{ detallePuesto.numeroPuesto }}</li>
+          <li class="list-group-item"><strong>Ubicación:</strong> {{ detallePuesto.ubicacion }}</li>
+          <li class="list-group-item"><strong>Licencia:</strong> <span class="badge bg-secondary">{{ detallePuesto.licenciaFuncionamiento }}</span></li>
+          <li class="list-group-item"><strong>Estado:</strong> <span class="badge bg-secondary">{{ detallePuesto.estado }}</span></li>
+          <li class="list-group-item bg-light mt-2">
+            <strong>Titular Actual:</strong><br>
+            <span *ngIf="detallePuesto.socioNombreCompleto" class="text-primary fs-5">
+              {{ detallePuesto.socioNombreCompleto }}
+            </span>
+            <span *ngIf="!detallePuesto.socioNombreCompleto" class="text-muted">
+              Vacante
+            </span>
+            <div *ngIf="detallePuesto.socioDni" class="small text-muted">DNI: {{ detallePuesto.socioDni }}</div>
+          </li>
+        </ul>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="closeVerModal()">Cerrar</button>
       </div>
     </div>
   </div>
