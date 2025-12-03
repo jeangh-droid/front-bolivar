@@ -5,6 +5,21 @@
     <button type="button" class="btn-close" (click)="successMessage = null"></button>
   </div>
 
+  <!-- BARRA DE BÚSQUEDA -->
+  <div class="row mb-3">
+    <div class="col-md-6">
+      <div class="input-group">
+        <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+        <input type="text" class="form-control" placeholder="Buscar por N° Puesto, Ubicación o Socio..." 
+               [(ngModel)]="terminoBusqueda" (keyup.enter)="buscarPuestos()">
+        <button class="btn btn-primary" (click)="buscarPuestos()">Buscar</button>
+        <button class="btn btn-outline-secondary" *ngIf="enBusqueda" (click)="limpiarBusqueda()">
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+
   <div class="card shadow-sm">
     <div class="card-header d-flex justify-content-between align-items-center">
       <h2 class="h4 mb-0">Gestión de Puestos Fijos</h2>
@@ -39,7 +54,9 @@
                 </span>
               </td>
               <td>
-                <span class="badge" [class.bg-info]="puesto.estado === 'OPERATIVO'" [class.bg-secondary]="puesto.estado !== 'OPERATIVO'">
+                <span class="badge" 
+                      [class.bg-info]="puesto.estado === 'OPERATIVO'" 
+                      [class.bg-secondary]="puesto.estado === 'INACTIVO'">
                   {{ puesto.estado }}
                 </span>
               </td>
@@ -49,16 +66,19 @@
                   <i class="bi bi-eye-fill"></i>
                 </button>
 
-                <!-- EDITAR (Datos técnicos solamente) -->
                 <button class="btn btn-sm btn-warning me-1" (click)="openEditModal(puesto)" title="Editar Datos">
                   <i class="bi bi-pencil-fill"></i>
                 </button>
 
-                <!-- TRANSFERIR (Cambio de socio) -->
                 <button class="btn btn-sm btn-primary" (click)="openTransferModal(puesto)" title="Transferir / Asignar">
                   <i class="bi bi-arrow-left-right"></i>
                 </button>
 
+              </td>
+            </tr>
+            <tr *ngIf="puestos.length === 0">
+              <td colspan="6" class="text-center text-muted py-4">
+                {{ enBusqueda ? 'No se encontraron puestos.' : 'No hay puestos registrados.' }}
               </td>
             </tr>
           </tbody>
@@ -68,9 +88,7 @@
   </div>
 </div>
 
-<!-- ================================================= -->
-<!-- MODAL EDITAR (Socio Bloqueado) -->
-<!-- ================================================= -->
+
 <div class="modal fade" #editModal id="editModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog">
     <div class="modal-content">
@@ -80,7 +98,6 @@
       </div>
       <div class="modal-body">
         <form (ngSubmit)="saveEdit()">
-          
           <!-- Socio Actual (SOLO LECTURA) -->
           <div class="mb-3">
             <label class="form-label text-muted">Titular Actual</label>
@@ -96,6 +113,7 @@
                 <option value="VENCIDO">VENCIDO</option>
               </select>
             </div>
+            <!-- Estado se deja editar aquí por si acaso, aunque transferir lo controla -->
             <div class="col-md-6 mb-3">
               <label class="form-label">Estado</label>
               <select class="form-select" [(ngModel)]="currentPuesto.estado" name="estado">
@@ -104,7 +122,6 @@
               </select>
             </div>
           </div>
-        
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary" (click)="closeEditModal()">Cancelar</button>
             <button type="submit" class="btn btn-primary">Guardar Cambios</button>
@@ -115,9 +132,7 @@
   </div>
 </div>
 
-<!-- ================================================= -->
-<!-- MODAL TRANSFERIR (Nuevo Modal) -->
-<!-- ================================================= -->
+<!-- MODAL TRANSFERIR -->
 <div class="modal fade" #transferModal id="transferModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog">
     <div class="modal-content">
@@ -126,37 +141,30 @@
         <button type="button" class="btn-close btn-close-white" (click)="closeTransferModal()"></button>
       </div>
       <div class="modal-body">
-        
         <div class="alert alert-info border-info">
           <strong>Ubicación:</strong> {{ currentPuestoReadonly.ubicacion }}<br>
           <strong>Titular Actual:</strong> {{ currentPuestoReadonly.socioActual }}
         </div>
-
         <form (ngSubmit)="saveTransfer()">
-          
           <div class="mb-3">
-            <label class="form-label fw-bold">Nuevo Titular (Solo Socios Activos)</label>
+            <label class="form-label fw-bold">Nuevo Titular (Solo Activos y Sin Puesto)</label>
             
-            <!-- SELECT DE SOCIOS ACTIVOS -->
             <select class="form-select border-primary" [(ngModel)]="transferData.idSocioNuevo" name="idSocioNuevo" required>
               <option [value]="0">-- LIBERAR PUESTO (Dejar Vacante) --</option>
               
-              <!-- Iteramos sobre sociosActivos -->
-              <option *ngFor="let socio of sociosActivos" [value]="socio.id">
+              <option *ngFor="let socio of sociosDisponibles" [value]="socio.id">
                 {{ socio.nombre }} {{ socio.apellido }} (DNI: {{ socio.dni }})
               </option>
             </select>
             
-            <div class="form-text mt-2" *ngIf="sociosActivos.length === 0">
-              <i class="bi bi-exclamation-circle text-warning"></i> No se encontraron socios activos disponibles o no se cargó la lista.
+            <div class="form-text mt-2" *ngIf="sociosDisponibles.length === 0">
+              <i class="bi bi-info-circle"></i> No hay socios disponibles para asignar. Todos tienen puesto o están inactivos.
             </div>
           </div>
-        
+
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary" (click)="closeTransferModal()">Cancelar</button>
-            <button type="submit" class="btn btn-primary" [disabled]="!transferData.idSocioNuevo && transferData.idSocioNuevo !== 0">
-              Confirmar Transferencia
-            </button>
+            <button type="submit" class="btn btn-primary">Confirmar Transferencia</button>
           </div>
         </form>
       </div>
@@ -164,7 +172,7 @@
   </div>
 </div>
 
-<!-- MODAL VER DETALLE (Sin cambios) -->
+<!-- MODAL VER -->
 <div class="modal fade" #verModal id="verModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog">
     <div class="modal-content">
@@ -180,12 +188,8 @@
           <li class="list-group-item"><strong>Estado:</strong> <span class="badge bg-secondary">{{ detallePuesto.estado }}</span></li>
           <li class="list-group-item bg-light mt-2">
             <strong>Titular Actual:</strong><br>
-            <span *ngIf="detallePuesto.socioNombreCompleto" class="text-primary fs-5">
-              {{ detallePuesto.socioNombreCompleto }}
-            </span>
-            <span *ngIf="!detallePuesto.socioNombreCompleto" class="text-muted">
-              Vacante
-            </span>
+            <span *ngIf="detallePuesto.socioNombreCompleto" class="text-primary fs-5">{{ detallePuesto.socioNombreCompleto }}</span>
+            <span *ngIf="!detallePuesto.socioNombreCompleto" class="text-muted">Vacante</span>
             <div *ngIf="detallePuesto.socioDni" class="small text-muted">DNI: {{ detallePuesto.socioDni }}</div>
           </li>
         </ul>
