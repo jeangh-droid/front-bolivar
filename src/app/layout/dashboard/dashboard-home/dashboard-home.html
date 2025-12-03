@@ -1,1 +1,158 @@
-<p>dashboard-home works!</p>
+<ng-container [ngSwitch]="(currentUserRole$ | async)">
+
+  <!-- === VISTA ADMIN === -->
+  <div *ngSwitchCase="'ROLE_ADMIN'">
+
+    <div class="row g-4">
+
+      <!-- Perfil del Administrador -->
+      <div class="col-lg-5">
+        <div class="card shadow border-0 h-100">
+          <div class="card-body">
+
+            <!-- Header del Perfil -->
+            <div class="d-flex align-items-center mb-3">
+              <div class="bg-primary text-white rounded-circle d-flex justify-content-center align-items-center me-3"
+                   style="width: 55px; height: 55px;">
+                <i class="bi bi-person-gear fs-3"></i>
+              </div>
+
+              <div>
+                <h4 class="mb-0 fw-bold">Administrador</h4>
+                <small class="text-muted">Sesión Activa</small>
+              </div>
+            </div>
+
+            <hr>
+
+            <!-- Datos del Perfil -->
+            <div *ngIf="adminProfile; else loadingProfile">
+
+              <div class="mb-2">
+                <span class="text-secondary fw-bold">Nombre:</span><br>
+                <span>{{ adminProfile.nombre }} {{ adminProfile.apellido }}</span>
+              </div>
+
+              <div class="mb-2">
+                <span class="text-secondary fw-bold">Usuario:</span><br>
+                <span>@{{ adminProfile.username }}</span>
+              </div>
+
+              <div class="mb-2">
+                <span class="text-secondary fw-bold">DNI:</span><br>
+                <span>{{ adminProfile.dni }}</span>
+              </div>
+
+              <div class="mb-2">
+                <span class="text-secondary fw-bold">Teléfono:</span><br>
+                <span>{{ adminProfile.numero }}</span>
+              </div>
+
+            </div>
+
+            <ng-template #loadingProfile>
+              <p class="text-muted">Cargando datos del perfil...</p>
+            </ng-template>
+
+          </div>
+        </div>
+      </div>
+
+      <!-- Estadísticas -->
+      <div class="col-lg-7">
+        <div class="row g-4">
+
+          <!-- Socios Activos -->
+          <div class="col-md-6">
+            <div class="card shadow-sm border-0 text-center h-100 p-3 bg-light">
+              <i class="bi bi-people-fill text-success fs-1 mb-2"></i>
+              <h6 class="text-muted">Socios Activos</h6>
+              <h1 class="fw-bold text-success">{{ totalSocios }}</h1>
+            </div>
+          </div>
+
+          <!-- Multas Pendientes -->
+          <div class="col-md-6">
+            <div class="card shadow-sm border-0 text-center h-100 p-3 bg-light">
+              <i class="bi bi-exclamation-octagon-fill text-danger fs-1 mb-2"></i>
+              <h6 class="text-muted">Multas Pendientes</h6>
+              <h1 class="fw-bold text-danger">{{ multasPendientes }}</h1>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- === VISTA SOCIO === -->
+   <div *ngSwitchCase="'ROLE_SOCIO'">
+    
+    <div class="row justify-content-center">
+      <div class="col-lg-8">
+        <div class="card shadow border-success border-top border-4">
+          <div class="card-body p-4">
+            
+            <div class="d-flex align-items-center mb-4">
+              <div class="bg-success text-white rounded-circle d-flex justify-content-center align-items-center me-3" style="width: 60px; height: 60px;">
+                <i class="bi bi-person-badge fs-2"></i>
+              </div>
+              <div>
+                <h3 class="card-title mb-0 text-success">Mi Perfil de Socio</h3>
+                <p class="text-muted mb-0">Información Personal y Estado</p>
+              </div>
+            </div>
+
+            <div *ngIf="socioProfile; else loadingSocio">
+              <div class="row g-3">
+                
+                <!-- Columna 1 -->
+                <div class="col-md-6">
+                  <div class="p-3 bg-light rounded h-100">
+                    <h6 class="text-secondary text-uppercase small fw-bold mb-3">Datos Personales</h6>
+                    <p class="mb-2"><strong>Nombre:</strong> {{ socioProfile.nombre }} {{ socioProfile.apellido }}</p>
+                    <p class="mb-2"><strong>DNI:</strong> {{ socioProfile.dni }}</p>
+                    <p class="mb-2"><strong>Teléfono:</strong> {{ socioProfile.numero || 'No registrado' }}</p>
+                    <p class="mb-0"><strong>Dirección:</strong> {{ socioProfile.direccion }}</p>
+                  </div>
+                </div>
+
+                <!-- Columna 2 -->
+                <div class="col-md-6">
+                  <div class="p-3 bg-light rounded h-100">
+                    <h6 class="text-secondary text-uppercase small fw-bold mb-3">Datos de Afiliación</h6>
+                    <p class="mb-2"><strong>Usuario:</strong> @{{ socioProfile.username }}</p>
+                    <p class="mb-2"><strong>N° Tarjeta:</strong> <span class="font-monospace bg-white px-2 border rounded">{{ socioProfile.tarjetaSocio }}</span></p>
+                    <p class="mb-0">
+                      <strong>Carnet Sanidad:</strong> 
+                      <span class="badge ms-2" 
+                        [class.bg-success]="socioProfile.carnetSanidad === 'VIGENTE'" 
+                        [class.bg-danger]="socioProfile.carnetSanidad !== 'VIGENTE'">
+                        {{ socioProfile.carnetSanidad }}
+                      </span>
+                    </p>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+            <ng-template #loadingSocio>
+              <div class="text-center py-4">
+                <div class="spinner-border text-success" role="status">
+                  <span class="visually-hidden">Cargando...</span>
+                </div>
+                <p class="mt-2 text-muted">Cargando tus datos...</p>
+              </div>
+            </ng-template>
+
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</ng-container>
