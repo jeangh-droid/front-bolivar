@@ -1,18 +1,40 @@
 <div class="container-fluid">
   
-  <!-- ALERTA DE ÉXITO -->
   <div *ngIf="successMessage" class="alert alert-success alert-dismissible fade show" role="alert">
     <i class="bi bi-check-circle-fill me-2"></i> {{ successMessage }}
     <button type="button" class="btn-close" (click)="successMessage = null"></button>
   </div>
 
+  <!-- BARRA DE BÚSQUEDA -->
+  <div class="row mb-3">
+    <div class="col-md-6">
+      <div class="input-group">
+        <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+        <input type="text" class="form-control" placeholder="Buscar por Motivo, Socio o Apellido..." 
+               [(ngModel)]="terminoBusqueda" (keyup.enter)="buscarMultas()">
+        <button class="btn btn-primary" (click)="buscarMultas()">Buscar</button>
+        <button class="btn btn-outline-secondary" *ngIf="enBusqueda" (click)="limpiarBusqueda()">
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+
   <div class="card shadow-sm">
     <div class="card-header d-flex justify-content-between align-items-center">
-      <h2 class="h4 mb-0">Gestión de Multas</h2>
-      <button class="btn btn-primary" (click)="openModal()">
+      <h2 class="h4 mb-0">
+        Gestión de Multas
+        <span *ngIf="!enBusqueda && filtroActual !== 'TODAS'" class="badge bg-secondary ms-2">{{ filtroActual }}S</span>
+        <span *ngIf="enBusqueda" class="badge bg-warning text-dark ms-2">Resultados</span>
+      </h2>
+      
+      <!-- BOTÓN GENERAR MULTA (RESTRINGIDO) -->
+      <!-- Solo visible si estamos en la vista de PENDIENTES -->
+      <button class="btn btn-primary" (click)="openModal()" *ngIf="filtroActual === 'PENDIENTE'">
         <i class="bi bi-plus-lg me-2"></i> Generar Multa
       </button>
     </div>
+    
     <div class="card-body">
       <div class="table-responsive">
         <table class="table table-striped table-hover align-middle">
@@ -24,7 +46,7 @@
               <th>Monto</th>
               <th>Estado</th>
               <th>Fecha Emisión</th>
-              <th>Acciones</th>
+              <th class="text-center">Acciones</th>
             </tr>
           </thead>
           <tbody>
@@ -32,7 +54,7 @@
               <td>{{ multa.id }}</td>
               <td>{{ multa.socioNombreCompleto }}</td>
               <td>{{ multa.motivo }}</td>
-              <td>S/ {{ multa.monto | number:'1.2-2' }}</td>
+              <td class="fw-bold">S/ {{ multa.monto | number:'1.2-2' }}</td>
               <td>
                 <span class="badge" 
                   [class.bg-warning]="multa.estado === 'PENDIENTE'" 
@@ -41,17 +63,31 @@
                 </span>
               </td>
               <td>{{ multa.fechaEmision }}</td>
-              <td>
-                <button class="btn btn-sm btn-warning me-2" (click)="openModal(multa)">
-                  <i class="bi bi-pencil-fill"></i>
-                </button>
-                <button class="btn btn-sm btn-danger" (click)="openDeleteModal(multa)">
-                  <i class="bi bi-trash-fill"></i>
-                </button>
+              <td class="text-center">
+                
+                <!-- ACCIONES (Solo si es PENDIENTE) -->
+                <ng-container *ngIf="multa.estado === 'PENDIENTE'; else bloqueado">
+                  <button class="btn btn-sm btn-warning me-2" (click)="openModal(multa)" title="Editar">
+                    <i class="bi bi-pencil-fill"></i>
+                  </button>
+                  <button class="btn btn-sm btn-danger" (click)="openDeleteModal(multa)" title="Eliminar">
+                    <i class="bi bi-trash-fill"></i>
+                  </button>
+                </ng-container>
+
+                <!-- INDICADOR DE BLOQUEO (Si es PAGADA) -->
+                <ng-template #bloqueado>
+                  <span class="text-muted" title="Esta multa ya fue pagada y no se puede modificar">
+                    <i class="bi bi-lock-fill fs-5"></i>
+                  </span>
+                </ng-template>
+
               </td>
             </tr>
             <tr *ngIf="multas.length === 0">
-              <td colspan="7" class="text-center text-muted">No hay multas registradas</td>
+              <td colspan="7" class="text-center text-muted py-4">
+                {{ enBusqueda ? 'No se encontraron multas.' : 'No hay multas en esta categoría.' }}
+              </td>
             </tr>
           </tbody>
         </table>
@@ -60,7 +96,6 @@
   </div>
 </div>
 
-<!-- Modal Generar/Editar -->
 <div class="modal fade" #multaModal id="multaModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog">
     <div class="modal-content">
@@ -74,16 +109,40 @@
 
         <form #multaForm="ngForm" (ngSubmit)="saveMulta()">
           
-          <div class="mb-3">
-            <label class="form-label">Socio (*)</label>
-            <select class="form-select" [(ngModel)]="currentMulta.idSocio" name="idSocio" required
-                    #socioCtrl="ngModel" [class.is-invalid]="socioCtrl.invalid && (socioCtrl.dirty || socioCtrl.touched)">
-              <option [value]="0" disabled>-- Seleccione --</option>
-              <option *ngFor="let s of socios" [value]="s.id">
-                {{ s.nombre }} {{ s.apellido }} ({{ s.dni }})
-              </option>
-            </select>
-            <div class="invalid-feedback">Debe seleccionar un socio.</div>
+          <!-- BUSCADOR SOCIO -->
+          <div class="mb-4 p-3 border rounded bg-light">
+            <label class="form-label fw-bold">Buscar Socio (*)</label>
+            <div class="input-group mb-2">
+              <input type="text" class="form-control" placeholder="DNI o Nombre..." 
+                     [(ngModel)]="terminoBusquedaSocio" name="searchSocio"
+                     [disabled]="socioSeleccionado !== null"
+                     (keyup.enter)="buscarSocioParaMulta()">
+              
+              <button class="btn btn-outline-primary" type="button" (click)="buscarSocioParaMulta()" 
+                      *ngIf="!socioSeleccionado" [disabled]="buscandoSocio">
+                <i class="bi" [class.bi-search]="!buscandoSocio" [class.bi-hourglass-split]="buscandoSocio"></i>
+              </button>
+              
+              <button class="btn btn-outline-danger" type="button" (click)="cancelarSeleccionSocio()" 
+                      *ngIf="socioSeleccionado">
+                Cambiar
+              </button>
+            </div>
+
+            <div *ngIf="mensajeBusquedaSocio" class="alert alert-warning py-1 px-2 small">
+              {{ mensajeBusquedaSocio }}
+            </div>
+
+            <ul class="list-group mt-2" *ngIf="resultadosBusquedaSocio.length > 0 && !socioSeleccionado">
+              <li class="list-group-item list-group-item-action cursor-pointer" 
+                  *ngFor="let s of resultadosBusquedaSocio" (click)="seleccionarSocio(s)">
+                <strong>{{ s.nombre }} {{ s.apellido }}</strong> - {{ s.dni }}
+              </li>
+            </ul>
+            
+            <div *ngIf="socioSeleccionado" class="alert alert-success mt-2 py-2">
+              <i class="bi bi-person-check-fill me-2"></i> {{ socioSeleccionado.nombre }} {{ socioSeleccionado.apellido }}
+            </div>
           </div>
 
           <div class="mb-3">
@@ -92,7 +151,7 @@
                     #motivoCtrl="ngModel" [class.is-invalid]="motivoCtrl.invalid && (motivoCtrl.dirty || motivoCtrl.touched)">
               <option *ngFor="let m of motivos" [value]="m">{{ m }}</option>
             </select>
-            <div class="invalid-feedback">El motivo es obligatorio.</div>
+            <div class="invalid-feedback">Seleccione un motivo.</div>
           </div>
 
           <div class="mb-3">
@@ -100,23 +159,22 @@
             <input type="number" class="form-control" [(ngModel)]="currentMulta.monto" name="monto" 
                    required min="0.1" step="0.01" #montoCtrl="ngModel"
                    [class.is-invalid]="montoCtrl.invalid && (montoCtrl.dirty || montoCtrl.touched)">
-            <div class="invalid-feedback">El monto es obligatorio y debe ser mayor a 0.</div>
+            <div class="invalid-feedback">Ingrese un monto válido (mayor a 0).</div>
           </div>
 
-          <!-- Solo mostrar estado al editar, al crear es PENDIENTE por defecto -->
+          <!-- Estado (Solo al editar) 
           <div class="mb-3" *ngIf="currentMultaId">
             <label class="form-label">Estado</label>
             <select class="form-select" [(ngModel)]="currentMulta.estado" name="estado">
               <option value="PENDIENTE">PENDIENTE</option>
-              <option value="PAGADA">PAGADA</option>
+              <option value="PAGAD">PAGADA</option>
             </select>
-          </div>
+          </div> -->
 
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary" (click)="closeMultaModal()">Cancelar</button>
-            <!-- Deshabilitar si form inválido O si no hay cambios en edición -->
             <button type="submit" class="btn btn-primary" 
-                    [disabled]="multaForm.invalid || (currentMultaId && !hasChanges())">
+                    [disabled]="multaForm.invalid || !socioSeleccionado || (currentMultaId && !hasChanges())">
               Guardar
             </button>
           </div>

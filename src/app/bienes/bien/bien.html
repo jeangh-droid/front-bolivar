@@ -1,96 +1,235 @@
-<div class="card shadow-sm">
-  <div class="card-header d-flex justify-content-between align-items-center">
-    <h2 class="h4 mb-0">Inventario de Bienes</h2>
-    <button class="btn btn-primary" (click)="openModal()">
-      <i class="bi bi-plus-lg me-2"></i> Agregar Bien
-    </button>
+<div class="container-fluid">
+  
+  <div *ngIf="successMessage" class="alert alert-success alert-dismissible fade show" role="alert">
+    <i class="bi bi-check-circle-fill me-2"></i> {{ successMessage }}
+    <button type="button" class="btn-close" (click)="successMessage = null"></button>
   </div>
-  <div class="card-body">
-    <div class="table-responsive">
-      <table class="table table-striped table-hover align-middle">
-        <thead class="table-dark">
-          <tr>
-            <th>ID</th>
-            <th>Nombre</th>
-            <th>Descripción</th>
-            <th>Cantidad</th>
-            <th>Estado</th>
-            <th>Acciones</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr *ngFor="let bien of bienes">
-            <td>{{ bien.id }}</td>
-            <td>{{ bien.nombre }}</td>
-            <td>{{ bien.descripcion }}</td>
-            <td>{{ bien.cantidad }}</td>
-            <td>
-              <span class="badge" 
-                [class.bg-success]="bien.estado === 'BUENO'" 
-                [class.bg-warning]="bien.estado === 'REGULAR'"
-                [class.bg-danger]="bien.estado === 'MALO'">
-                {{ bien.estado }}
-              </span>
-            </td>
-            <td>
-              <button class="btn btn-sm btn-warning me-2" (click)="openModal(bien)">
-                <i class="bi bi-pencil-fill"></i> Editar
-              </button>
-              <button class="btn btn-sm btn-danger" (click)="openDeleteModal(bien)">
-                <i class="bi bi-trash-fill"></i> Eliminar
-              </button>
-            </td>
-          </tr>
-          <tr *ngIf="bienes.length === 0">
-            <td colspan="6" class="text-center text-muted">No hay bienes registrados.</td>
-          </tr>
-        </tbody>
-      </table>
+
+  <!-- BARRA DE BÚSQUEDA -->
+  <div class="row mb-3">
+    <div class="col-md-6">
+      <div class="input-group">
+        <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+        <input type="text" class="form-control" placeholder="Buscar por Nombre o Descripción..." 
+               [(ngModel)]="terminoBusqueda" (keyup.enter)="buscarBienes()">
+        <button class="btn btn-primary" (click)="buscarBienes()">Buscar</button>
+        <button class="btn btn-outline-secondary" *ngIf="enBusqueda" (click)="limpiarBusqueda()">
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TARJETA PRINCIPAL -->
+  <div class="card shadow-sm">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <h2 class="h4 mb-0">
+        Inventario de Bienes
+        <span *ngIf="enBusqueda" class="badge bg-warning text-dark ms-2">Resultados</span>
+      </h2>
+      <button class="btn btn-primary" (click)="openCrearModal()">
+        <i class="bi bi-plus-lg me-2"></i> Nuevo Bien
+      </button>
+    </div>
+    <div class="card-body">
+      <div class="table-responsive">
+        <table class="table table-striped table-hover align-middle">
+          <thead class="table-dark">
+            <tr>
+              <th>ID</th><th>Nombre</th><th>Descripción</th><th>Stock Actual</th><th class="text-center">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let bien of bienes">
+              <td>{{ bien.id }}</td>
+              <td>{{ bien.nombre }}</td>
+              <td>{{ bien.descripcion }}</td>
+              <td class="fw-bold fs-5 text-end pe-4" 
+                  [class.text-danger]="bien.cantidad <= 5" 
+                  [class.text-success]="bien.cantidad > 5">
+                {{ bien.cantidad }}
+              </td>
+              <td class="text-center">
+                <button class="btn btn-sm btn-info me-2" (click)="openVerModal(bien)" title="Ver Detalle / Historial">
+                  <i class="bi bi-eye-fill me-1"></i> Ver
+                </button>
+                <button class="btn btn-sm btn-warning" (click)="openStockModal(bien)" title="Ajustar Stock">
+                  <i class="bi bi-arrow-down-up me-1"></i> Stock
+                </button>
+              </td>
+            </tr>
+            <tr *ngIf="bienes.length === 0">
+              <td colspan="6" class="text-center text-muted py-4">
+                {{ enBusqueda ? 'No se encontraron bienes.' : 'No hay bienes registrados.' }}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </div>
   </div>
 </div>
 
-<!-- Modal Agregar/Editar -->
-<div class="modal fade" #bienModal id="bienModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog">
+<!-- ============================================= -->
+<!-- MODAL VER (EDITAR + HISTORIAL) -->
+<!-- ============================================= -->
+<div class="modal fade" #verModal id="verModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-xl">
     <div class="modal-content">
-      <div class="modal-header">
+      <div class="modal-header bg-light">
         <h5 class="modal-title">{{ modalTitle }}</h5>
-        <button type="button" class="btn-close" (click)="closeBienModal()"></button>
+        <button type="button" class="btn-close" (click)="closeVerModal()"></button>
       </div>
-      <div class="modal-body">
+      <div class="modal-body p-0">
         
-        <div *ngIf="errorMessage" class="alert alert-danger">{{ errorMessage }}</div>
-        
-        <form #bienForm="ngForm" (ngSubmit)="saveBien()">
+        <ul class="nav nav-tabs nav-fill bg-white px-3 pt-3">
+          <li class="nav-item">
+            <a class="nav-link" [class.active]="activeTab === 'EDITAR'" (click)="setActiveTab('EDITAR')" href="javascript:void(0)" style="cursor: pointer;">
+              <i class="bi bi-pencil-square me-2"></i> Editar Datos
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" [class.active]="activeTab === 'HISTORIAL'" (click)="setActiveTab('HISTORIAL')" href="javascript:void(0)" style="cursor: pointer;">
+              <i class="bi bi-clock-history me-2"></i> Historial
+            </a>
+          </li>
+        </ul>
+
+        <div class="p-4 bg-light">
           
-          <div class="mb-3">
-            <label class="form-label">Nombre (*)</label>
-            <input type="text" class="form-control" [(ngModel)]="currentBien.nombre" name="nombre" required>
+          <!-- 1. SECCIÓN EDITAR -->
+          <div *ngIf="activeTab === 'EDITAR'">
+            <form #editForm="ngForm" (ngSubmit)="saveEdicionBien()">
+              <div class="row">
+                <div class="col-md-8 mb-3">
+                  <label class="form-label">Nombre (*)</label>
+                  <input type="text" class="form-control" [(ngModel)]="currentBien.nombre" name="nombre" 
+                         required minlength="3" #nombreEdit="ngModel"
+                         [class.is-invalid]="nombreEdit.invalid && (nombreEdit.dirty || nombreEdit.touched)">
+                  <div class="invalid-feedback" *ngIf="nombreEdit.errors?.['required']">El nombre es obligatorio.</div>
+                  <div class="invalid-feedback" *ngIf="nombreEdit.errors?.['minlength']">Mínimo 3 caracteres.</div>
+                </div>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Descripción</label>
+                <textarea class="form-control" [(ngModel)]="currentBien.descripcion" name="descripcion" rows="3"></textarea>
+              </div>
+              
+              <div class="alert alert-info py-2 small">
+                <i class="bi bi-info-circle me-1"></i> El Stock no es editable aquí. Use la opción "Stock" para registrar movimientos.
+              </div>
+
+              <!-- BOTONES DE ACCIÓN (CORREGIDOS) -->
+              <div class="d-flex justify-content-end gap-2">
+                <button type="button" class="btn btn-secondary" (click)="closeVerModal()">Cancelar</button>
+                <!-- Se deshabilita si es inválido O si no hay cambios -->
+                <button type="submit" class="btn btn-primary" [disabled]="editForm.invalid || !hasChanges()">
+                  Guardar Cambios
+                </button>
+              </div>
+            </form>
           </div>
 
-          <div class="mb-3">
-            <label class="form-label">Descripción</label>
-            <textarea class="form-control" [(ngModel)]="currentBien.descripcion" name="descripcion" rows="2"></textarea>
+          <!-- 2. SECCIÓN HISTORIAL -->
+          <div *ngIf="activeTab === 'HISTORIAL'">
+            <div class="table-responsive bg-white border rounded shadow-sm mb-3" style="max-height: 400px; overflow-y: auto;">
+              <table class="table table-sm table-hover mb-0">
+                <thead class="table-light sticky-top">
+                  <tr>
+                    <th>Fecha</th>
+                    <th>Motivo</th>
+                    <th class="text-success text-center">Entrada</th>
+                    <th class="text-danger text-center">Salida</th>
+                    <th class="text-end pe-3">Saldo</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let h of historial">
+                    <td>{{ h.fecha }}</td>
+                    <td>{{ h.motivo }}</td>
+                    <td class="text-center">
+                        <span *ngIf="h.cantidadEntrada > 0" class="text-success fw-bold">+{{ h.cantidadEntrada }}</span>
+                        <span *ngIf="!h.cantidadEntrada" class="text-muted">-</span>
+                    </td>
+                    <td class="text-center">
+                        <span *ngIf="h.cantidadSalida > 0" class="text-danger fw-bold">-{{ h.cantidadSalida }}</span>
+                        <span *ngIf="!h.cantidadSalida" class="text-muted">-</span>
+                    </td>
+                    <td class="text-end pe-3 fw-bold text-dark">{{ h.stockResultante }}</td>
+                  </tr>
+                  <tr *ngIf="historial.length === 0">
+                    <td colspan="5" class="text-center text-muted py-4">
+                      <i class="bi bi-inbox fs-4 d-block mb-2"></i> Sin movimientos registrados.
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="d-flex justify-content-end">
+                <button type="button" class="btn btn-secondary" (click)="closeVerModal()">
+                    <i class="bi bi-arrow-return-left me-1"></i> Regresar
+                </button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================= -->
+<!-- MODAL MOVIMIENTO STOCK (SIN FECHA - CORRECTO) -->
+<!-- ============================================= -->
+<div class="modal fade" #stockModal id="stockModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-warning">
+        <h5 class="modal-title text-dark">{{ modalTitle }}</h5>
+        <button type="button" class="btn-close" (click)="closeStockModal()"></button>
+      </div>
+      <div class="modal-body">
+        <div *ngIf="errorMessage" class="alert alert-danger">{{ errorMessage }}</div>
+        
+        <form #stockForm="ngForm" (ngSubmit)="saveMovimiento()">
+          
+          <div class="alert alert-light border small mb-3">
+            <i class="bi bi-calendar-event me-1"></i> La fecha y hora se registrarán automáticamente.
           </div>
 
           <div class="row">
             <div class="col-md-6 mb-3">
-              <label class="form-label">Cantidad (*)</label>
-              <input type="number" class="form-control" [(ngModel)]="currentBien.cantidad" name="cantidad" required min="0">
-            </div>
-            
-            <div class="col-md-6 mb-3">
-              <label class="form-label">Estado (*)</label>
-              <select class="form-select" [(ngModel)]="currentBien.estado" name="estado" required>
-                <option *ngFor="let e of estados" [value]="e">{{ e }}</option>
+              <label class="form-label fw-bold">Tipo Movimiento (*)</label>
+              <select class="form-select" [(ngModel)]="currentMovimiento.tipo" name="tipo" required>
+                <option value="ENTRADA">ENTRADA (+)</option>
+                <option value="SALIDA">SALIDA (-)</option>
               </select>
+            </div>
+            <div class="col-md-6 mb-3">
+              <label class="form-label fw-bold">Cantidad (*)</label>
+              <input type="number" class="form-control" [(ngModel)]="currentMovimiento.cantidad" name="cantidad" 
+                     required min="1" #cantStock="ngModel"
+                     [class.is-invalid]="cantStock.invalid && (cantStock.dirty || cantStock.touched)">
+              <div class="invalid-feedback">Debe ser mayor a 0.</div>
             </div>
           </div>
 
+          <!-- Sin campo Fecha, como solicitaste -->
+
+          <div class="mb-3">
+            <label class="form-label">Motivo / Detalle (*)</label>
+            <textarea class="form-control" [(ngModel)]="currentMovimiento.motivo" name="motivo" rows="2" 
+                      required minlength="5" placeholder="Ej: Compra de insumos..." #motivoStock="ngModel"
+                      [class.is-invalid]="motivoStock.invalid && (motivoStock.dirty || motivoStock.touched)"></textarea>
+            <div class="invalid-feedback" *ngIf="motivoStock.errors?.['required']">El motivo es obligatorio.</div>
+            <div class="invalid-feedback" *ngIf="motivoStock.errors?.['minlength']">Sea más específico (min 5 letras).</div>
+          </div>
+
           <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" (click)="closeBienModal()">Cancelar</button>
-            <button type="submit" class="btn btn-primary" [disabled]="bienForm.invalid">Guardar</button>
+            <button type="button" class="btn btn-secondary" (click)="closeStockModal()">Cancelar</button>
+            <button type="submit" class="btn btn-primary" [disabled]="stockForm.invalid">
+              Registrar Movimiento
+            </button>
           </div>
         </form>
       </div>
@@ -98,20 +237,49 @@
   </div>
 </div>
 
-<!-- Modal Borrar -->
-<div class="modal fade" #deleteConfirmModal id="deleteConfirmModal" tabindex="-1" aria-hidden="true">
+<!-- ============================================= -->
+<!-- MODAL CREAR NUEVO (SIN ESTADO - CORRECTO) -->
+<!-- ============================================= -->
+<div class="modal fade" #crearModal id="crearModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title">Confirmar Eliminación</h5>
-        <button type="button" class="btn-close" (click)="closeDeleteModal()"></button>
+        <h5 class="modal-title">Registrar Nuevo Bien</h5>
+        <button type="button" class="btn-close" (click)="closeCrearModal()"></button>
       </div>
       <div class="modal-body">
-        <p>¿Eliminar bien <strong>{{ bienAEliminar?.nombre }}</strong>?</p>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" (click)="closeDeleteModal()">Cancelar</button>
-        <button type="button" class="btn btn-danger" (click)="confirmDelete()">Eliminar</button>
+        <!-- Alerta de error duplicado -->
+        <div *ngIf="errorMessage" class="alert alert-danger d-flex align-items-center" role="alert">
+          <i class="bi bi-exclamation-triangle-fill me-2"></i>
+          <div>{{ errorMessage }}</div>
+        </div>
+
+        <form #createForm="ngForm" (ngSubmit)="saveNuevoBien()">
+          <div class="mb-3">
+            <label class="form-label">Nombre (*)</label>
+            <input type="text" class="form-control" [(ngModel)]="currentBien.nombre" name="nombreNew" 
+                   required minlength="3" #nombreNew="ngModel"
+                   [class.is-invalid]="nombreNew.invalid && (nombreNew.dirty || nombreNew.touched)">
+            <div class="invalid-feedback">Nombre obligatorio (min 3 letras).</div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Descripción</label>
+            <textarea class="form-control" [(ngModel)]="currentBien.descripcion" name="descNew"></textarea>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Stock Inicial (*)</label>
+            <input type="number" class="form-control" [(ngModel)]="currentBien.cantidad" name="cantNew" 
+                   required min="0" #cantNew="ngModel"
+                   [class.is-invalid]="cantNew.invalid && (cantNew.dirty || cantNew.touched)">
+            <div class="invalid-feedback">El stock no puede ser negativo.</div>
+          </div>
+          
+
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" (click)="closeCrearModal()">Cancelar</button>
+            <button type="submit" class="btn btn-primary" [disabled]="createForm.invalid">Guardar</button>
+          </div>
+        </form>
       </div>
     </div>
   </div>

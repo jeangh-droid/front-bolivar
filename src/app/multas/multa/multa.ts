@@ -1,9 +1,10 @@
 import { Component, OnInit, ElementRef, ViewChild, AfterViewInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { MultaRequestDTO, MultaResponseDTO, MultaService } from '../../services/multa';
-import { SocioResponseDTO, SocioService } from '../../services/socio';
+
 import { ActivatedRoute } from '@angular/router';
+import { SocioResponseDTO, SocioService } from '../../services/socio';
+import { MultaRequestDTO, MultaResponseDTO, MultaService } from '../../services/multa';
 
 declare var bootstrap: any;
 
@@ -23,22 +24,30 @@ export class MultaComponent implements OnInit, AfterViewInit {
   socios: SocioResponseDTO[] = [];
   
   allMultas: MultaResponseDTO[] = [];
-  multas: MultaResponseDTO[] = []; 
+  multas: MultaResponseDTO[] = [];
   filtroActual: string = 'TODAS';
 
   motivos: string[] = ['TARDANZA_ASAMBLEA', 'FALTA_ASAMBLEA', 'INCUMPLIMIENTO_DEBERES', 'ALTERACION_ORDEN', 'OTRO'];
   
   currentMulta: MultaRequestDTO = this.getEmptyMultaRequest();
-  // Copia para verificar cambios
   originalMulta: MultaRequestDTO = this.getEmptyMultaRequest();
 
   currentMultaId: number | null = null;
-  modalTitle = 'Generar Multa';
+  modalTitle: string = 'Generar Multa';
   
   errorMessage: string | null = null;
-  successMessage: string | null = null; // Mensaje de éxito
-
+  successMessage: string | null = null;
   multaAEliminar: MultaResponseDTO | null = null;
+
+  terminoBusqueda: string = '';
+  enBusqueda: boolean = false;
+  
+  // Variables Búsqueda Socio (Modal)
+  terminoBusquedaSocio: string = '';
+  resultadosBusquedaSocio: SocioResponseDTO[] = [];
+  mensajeBusquedaSocio: string | null = null;
+  buscandoSocio: boolean = false;
+  socioSeleccionado: SocioResponseDTO | null = null; 
 
   constructor(
     private multaService: MultaService,
@@ -48,13 +57,15 @@ export class MultaComponent implements OnInit, AfterViewInit {
 
   ngOnInit(): void {
     this.route.queryParams.subscribe(params => {
-      const estado = params['estado'];
-      this.filtroActual = estado ? estado : 'TODAS';
-      this.aplicarFiltro();
+      const nuevoEstado = params['estado'];
+      this.filtroActual = nuevoEstado ? nuevoEstado : 'TODAS';
+      
+      if (!this.enBusqueda) { 
+        this.loadMultas(); 
+      } else {
+        this.aplicarFiltro();
+      }
     });
-
-    this.loadMultas();
-    this.loadSocios();
   }
 
   ngAfterViewInit(): void {
@@ -65,8 +76,9 @@ export class MultaComponent implements OnInit, AfterViewInit {
   loadMultas(): void {
     this.multaService.getMultas().subscribe({
       next: (data) => {
-        this.allMultas = data;
+        this.allMultas = data; 
         this.aplicarFiltro();
+        this.enBusqueda = false; 
       },
       error: () => this.errorMessage = 'Error cargando multas.'
     });
@@ -80,24 +92,74 @@ export class MultaComponent implements OnInit, AfterViewInit {
     }
   }
 
-  loadSocios(): void {
-    this.socioService.getSocios().subscribe(data => this.socios = data);
+  buscarMultas(): void {
+    if (this.terminoBusqueda && this.terminoBusqueda.trim().length > 0) {
+      this.enBusqueda = true;
+      this.multaService.buscarMultas(this.terminoBusqueda).subscribe({
+        next: (data) => {
+          this.allMultas = data;
+          this.aplicarFiltro();
+        },
+        error: () => {
+          this.errorMessage = 'Error en la búsqueda.';
+          this.loadMultas();
+        }
+      });
+    } else {
+      this.limpiarBusqueda();
+    }
+  }
+
+  limpiarBusqueda(): void {
+    this.terminoBusqueda = '';
+    this.enBusqueda = false;
+    this.loadMultas();
+  }
+  
+  buscarSocioParaMulta(): void {
+    if (!this.terminoBusquedaSocio || this.terminoBusquedaSocio.trim().length < 3) {
+      this.mensajeBusquedaSocio = "Ingrese al menos 3 caracteres para buscar.";
+      this.resultadosBusquedaSocio = [];
+      return;
+    }
+    this.buscandoSocio = true;
+    this.mensajeBusquedaSocio = null;
+    this.socioService.buscarSocios(this.terminoBusquedaSocio).subscribe({
+      next: (data) => {
+        this.resultadosBusquedaSocio = data;
+        this.buscandoSocio = false;
+        if(data.length === 0) this.mensajeBusquedaSocio = "No se encontraron socios.";
+      },
+      error: () => { this.buscandoSocio = false; this.mensajeBusquedaSocio = "Error al buscar."; }
+    });
+  }
+
+  seleccionarSocio(s: SocioResponseDTO): void {
+    this.socioSeleccionado = s;
+    this.currentMulta.idSocio = s.id;
+    this.terminoBusquedaSocio = `${s.nombre} ${s.apellido} (${s.dni})`;
+    this.resultadosBusquedaSocio = [];
+    this.mensajeBusquedaSocio = null;
+  }
+
+  cancelarSeleccionSocio(): void {
+    this.socioSeleccionado = null;
+    this.currentMulta.idSocio = 0;
+    this.terminoBusquedaSocio = '';
+    this.mensajeBusquedaSocio = null;
   }
 
   openModal(multa?: MultaResponseDTO): void {
     this.errorMessage = null;
     this.successMessage = null;
+    this.cancelarSeleccionSocio();
     
     if (multa) {
       this.modalTitle = 'Editar Multa';
       this.currentMultaId = multa.id;
-      this.currentMulta = {
-        idSocio: multa.socioId,
-        motivo: multa.motivo,
-        monto: multa.monto,
-        estado: multa.estado
-      };
-      // Clonar para comparar
+      this.socioSeleccionado = { id: multa.socioId, nombre: multa.socioNombreCompleto, dni: multa.socioDni } as any;
+      this.terminoBusquedaSocio = `${multa.socioNombreCompleto}`;
+      this.currentMulta = { idSocio: multa.socioId, motivo: multa.motivo, monto: multa.monto, estado: multa.estado };
       this.originalMulta = JSON.parse(JSON.stringify(this.currentMulta));
     } else {
       this.modalTitle = 'Generar Multa';
@@ -114,10 +176,7 @@ export class MultaComponent implements OnInit, AfterViewInit {
   }
 
   saveMulta(): void {
-    if (this.currentMulta.idSocio === 0) {
-        this.errorMessage = "Debe seleccionar un socio.";
-        return;
-    }
+    if (this.currentMulta.idSocio === 0) { this.errorMessage = "Debe buscar y seleccionar un socio."; return; }
 
     const req = this.currentMultaId 
       ? this.multaService.updateMulta(this.currentMultaId, this.currentMulta)
@@ -125,44 +184,31 @@ export class MultaComponent implements OnInit, AfterViewInit {
 
     req.subscribe({
       next: () => { 
-        this.loadMultas(); 
+        if(this.enBusqueda) this.buscarMultas(); else this.loadMultas();
         this.multaModal.hide();
         this.showSuccess('Multa guardada correctamente.');
       },
-      error: () => this.errorMessage = 'Error al guardar la multa.'
+      error: () => this.errorMessage = 'Error al guardar.'
     });
   }
 
-  openDeleteModal(multa: MultaResponseDTO): void {
-    this.multaAEliminar = multa;
-    this.deleteModal.show();
-  }
-
+  openDeleteModal(m: MultaResponseDTO): void { this.multaAEliminar = m; this.deleteModal.show(); }
+  
   confirmDelete(): void {
     if (this.multaAEliminar) {
       this.multaService.deleteMulta(this.multaAEliminar.id).subscribe({
         next: () => {
-          this.loadMultas();
+          if(this.enBusqueda) this.buscarMultas(); else this.loadMultas();
           this.deleteModal.hide();
-          this.showSuccess('Multa eliminada correctamente.');
+          this.showSuccess('Multa eliminada.');
         },
-        error: () => {
-            this.errorMessage = 'Error al eliminar la multa.';
-            this.deleteModal.hide();
-        }
+        error: () => { this.errorMessage = 'Error al eliminar la multa.'; this.deleteModal.hide(); }
       });
     }
   }
 
-  private showSuccess(msg: string) {
-    this.successMessage = msg;
-    setTimeout(() => this.successMessage = null, 3000);
-  }
-
+  private showSuccess(msg: string) { this.successMessage = msg; setTimeout(() => this.successMessage = null, 3000); }
   closeMultaModal(): void { this.multaModal.hide(); }
   closeDeleteModal(): void { this.deleteModal.hide(); }
-
-  private getEmptyMultaRequest(): MultaRequestDTO {
-    return { idSocio: 0, motivo: 'FALTA_ASAMBLEA', monto: 0.00, estado: 'PENDIENTE' };
-  }
+  private getEmptyMultaRequest(): MultaRequestDTO { return { idSocio: 0, motivo: 'FALTA_ASAMBLEA', monto: 0.00, estado: 'PENDIENTE' }; }
 }
