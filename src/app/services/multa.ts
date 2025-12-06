@@ -48,4 +48,8 @@ export class MultaService {
   getMisMultas(): Observable<MultaResponseDTO[]> {
     return this.http.get<MultaResponseDTO[]>(`${this.apiUrl}/mis-multas`);
   }
+
+  buscarMultas(termino:string): Observable<MultaResponseDTO[]> {
+    return this.http.get<MultaResponseDTO[]>(`${this.apiUrl}/buscar?termino=${termino}`);
+  }
 }

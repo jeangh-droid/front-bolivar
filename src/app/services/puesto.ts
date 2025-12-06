@@ -43,4 +43,8 @@ export class PuestoService {
   updatePuesto(id: number, puesto: PuestoRequestDTO): Observable<PuestoResponseDTO> {
     return this.http.put<PuestoResponseDTO>(`${this.apiUrl}/${id}`, puesto);
   }
+
+  buscarPuestos(termino: string): Observable<PuestoResponseDTO[]> {
+    return this.http.get<PuestoResponseDTO[]>(`${this.apiUrl}/buscar?termino=${termino}`);
+  }
 }

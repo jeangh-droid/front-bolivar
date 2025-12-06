@@ -24,20 +24,20 @@ export class PuestoComponent implements OnInit, AfterViewInit {
 
   puestos: PuestoResponseDTO[] = [];
   sociosActivos: SocioResponseDTO[] = [];
+  sociosDisponibles: SocioResponseDTO[] = [];
   
-  // Objeto para Editar 
   currentPuesto: PuestoRequestDTO = this.getEmptyPuestoRequest();
   currentPuestoId: number | null = null; 
-  
-  // Objeto específico para Transferir
-  transferData = {
-    idSocioNuevo: 0
-  };
+  transferData = { idSocioNuevo: 0 };
 
-  // Datos de lectura
+  // --- VARIABLES DE BUSCADOR ---
+  terminoBusqueda: string = '';
+  enBusqueda: boolean = false;
+
   detallePuesto: PuestoResponseDTO | null = null;
   currentPuestoReadonly: { numero: string, ubicacion: string, socioActual: string } = { numero: '', ubicacion: '', socioActual: '' };
   
+  modalTitle: string = 'Editar Puesto';
   errorMessage: string | null = null;
   successMessage: string | null = null;
 
@@ -48,8 +48,6 @@ export class PuestoComponent implements OnInit, AfterViewInit {
 
   ngOnInit(): void {
     this.loadPuestos();
-    // No cargamos sociosActivos aquí para no sobrecargar el inicio, 
-    // lo haremos solo cuando se quiera transferir.
   }
 
   ngAfterViewInit(): void {
@@ -60,111 +58,93 @@ export class PuestoComponent implements OnInit, AfterViewInit {
 
   loadPuestos(): void {
     this.puestoService.getPuestos().subscribe({
-      next: (data) => this.puestos = data,
+      next: (data) => {
+        this.puestos = data;
+        this.enBusqueda = false;
+      },
       error: () => this.errorMessage = 'Error al cargar puestos.'
     });
   }
 
-  loadSociosActivos(): void {
-    this.socioService.getSociosActivos().subscribe({
-      next: (data) => {
-        this.sociosActivos = data;
-        console.log('Socios activos cargados:', this.sociosActivos.length); // Debug
-      },
-      error: () => this.errorMessage = 'No se pudo cargar la lista de socios activos.'
-    });
+  buscarPuestos(): void {
+    if (this.terminoBusqueda && this.terminoBusqueda.trim().length > 0) {
+      this.enBusqueda = true;
+      this.puestoService.buscarPuestos(this.terminoBusqueda).subscribe({
+        next: (data) => this.puestos = data,
+        error: () => this.loadPuestos()
+      });
+    } else {
+      this.limpiarBusqueda();
+    }
   }
 
-  // --- 1. MODAL VER ---
+  limpiarBusqueda(): void {
+    this.terminoBusqueda = '';
+    this.enBusqueda = false;
+    this.loadPuestos();
+  }
+
+  loadSociosActivos(): void {
+    this.socioService.getSociosActivos().subscribe(data => this.sociosActivos = data);
+  }
+
   openVerModal(puesto: PuestoResponseDTO): void {
     this.detallePuesto = puesto;
     this.verModal.show();
   }
 
-  // --- 2. MODAL EDITAR (Solo datos técnicos) ---
   openEditModal(puesto: PuestoResponseDTO): void {
     this.errorMessage = null;
     this.currentPuestoId = puesto.id;
-    
-    // Guardamos datos visuales
     this.currentPuestoReadonly = {
       numero: puesto.numeroPuesto,
       ubicacion: puesto.ubicacion,
       socioActual: puesto.socioNombreCompleto || 'Vacante'
     };
-
-    // Al editar, mantenemos el ID del socio actual (no se toca)
     this.currentPuesto = {
       idSocio: puesto.socioId || 0, 
       licenciaFuncionamiento: puesto.licenciaFuncionamiento,
       estado: puesto.estado
     };
-    
     this.editModal.show();
+  }
+
+
+  saveTransfer(): void {
+    if (this.currentPuestoId) {
+      this.currentPuesto.idSocio = this.transferData.idSocioNuevo;
+      
+      if (this.currentPuesto.idSocio > 0) {
+          this.currentPuesto.estado = 'OPERATIVO';
+      } else {
+          this.currentPuesto.estado = 'INACTIVO';
+      }
+
+      this.puestoService.updatePuesto(this.currentPuestoId, this.currentPuesto).subscribe({
+        next: () => { 
+          if(this.enBusqueda) this.buscarPuestos(); else this.loadPuestos();
+          
+          this.transferModal.hide(); 
+          this.showSuccess(this.currentPuesto.idSocio === 0 ? 'Puesto liberado (INACTIVO).' : 'Transferencia exitosa.');
+        },
+        error: () => this.errorMessage = 'Error al transferir.'
+      });
+    }
   }
 
   saveEdit(): void {
     if (this.currentPuestoId) {
       this.puestoService.updatePuesto(this.currentPuestoId, this.currentPuesto).subscribe({
         next: () => { 
-          this.loadPuestos(); 
+          if(this.enBusqueda) this.buscarPuestos(); else this.loadPuestos();
           this.editModal.hide(); 
-          this.showSuccess('Datos del puesto actualizados.');
+          this.showSuccess('Datos actualizados.');
         },
         error: () => this.errorMessage = 'Error al actualizar.'
       });
     }
   }
 
-  // --- 3. MODAL TRANSFERIR (Solo cambio de socio) ---
-  openTransferModal(puesto: PuestoResponseDTO): void {
-    this.errorMessage = null;
-    this.currentPuestoId = puesto.id;
-    
-    // Cargar la lista fresca de socios activos
-    this.loadSociosActivos();
-
-    this.currentPuestoReadonly = {
-      numero: puesto.numeroPuesto,
-      ubicacion: puesto.ubicacion,
-      socioActual: puesto.socioNombreCompleto || 'Vacante'
-    };
-
-    // Preparamos el objeto base del puesto, pero el foco es idSocio
-    this.currentPuesto = {
-      idSocio: puesto.socioId || 0, // Valor actual
-      licenciaFuncionamiento: puesto.licenciaFuncionamiento,
-      estado: puesto.estado
-    };
-    
-    // Variable temporal para el select del modal
-    this.transferData.idSocioNuevo = 0; // Resetear select
-
-    this.transferModal.show();
-  }
-
-  saveTransfer(): void {
-    if (this.currentPuestoId) {
-      // Actualizamos solo el ID del socio en el objeto a enviar
-      this.currentPuesto.idSocio = this.transferData.idSocioNuevo;
-      
-      // Si se selecciona un socio, forzamos estado a OPERATIVO (regla de negocio opcional)
-      if (this.currentPuesto.idSocio > 0) {
-          this.currentPuesto.estado = 'OPERATIVO';
-      }
-
-      this.puestoService.updatePuesto(this.currentPuestoId, this.currentPuesto).subscribe({
-        next: () => { 
-          this.loadPuestos(); 
-          this.transferModal.hide(); 
-          this.showSuccess('Transferencia realizada con éxito.');
-        },
-        error: () => this.errorMessage = 'Error al transferir el puesto.'
-      });
-    }
-  }
-
-  // --- UTILIDADES ---
   private showSuccess(msg: string) {
     this.successMessage = msg;
     setTimeout(() => this.successMessage = null, 3000);
@@ -175,6 +155,24 @@ export class PuestoComponent implements OnInit, AfterViewInit {
   closeVerModal(): void { this.verModal.hide(); }
 
   private getEmptyPuestoRequest(): PuestoRequestDTO {
-    return { idSocio: 0, licenciaFuncionamiento: 'VIGENTE', estado: 'OPERATIVO' };
+    return { idSocio: 0, licenciaFuncionamiento: 'VIGENTE', estado: 'INACTIVO' };
+  }
+
+  openTransferModal(puesto: PuestoResponseDTO): void {
+    this.errorMessage = null;
+    this.currentPuestoId = puesto.id;
+    
+    this.socioService.getSociosDisponiblesParaPuesto().subscribe({
+        next: (data) => this.sociosDisponibles = data,
+        error: () => this.errorMessage = "Error cargando socios disponibles."
+    });
+
+    this.currentPuestoReadonly = {
+      numero: puesto.numeroPuesto,
+      ubicacion: puesto.ubicacion,
+      socioActual: puesto.socioNombreCompleto || 'Vacante'
+    };
+
+    this.transferModal.show();
   }
 }

@@ -94,4 +94,8 @@ export class SocioService {
   getSociosActivos(): Observable<SocioResponseDTO[]> {
     return this.http.get<SocioResponseDTO[]>(`${this.apiUrl}/activos`);
   }
+
+  getSociosDisponiblesParaPuesto(): Observable<SocioResponseDTO[]> {
+    return this.http.get<SocioResponseDTO[]>(`${this.apiUrl}/disponibles-para-puesto`);
+  }
 }
